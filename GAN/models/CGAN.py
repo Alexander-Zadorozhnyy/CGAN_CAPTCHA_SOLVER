@@ -1,4 +1,12 @@
+import os
+import pickle
+
+import numpy as np
 import tensorflow as tf
+import keras.backend as K
+from keras.utils import save_img
+
+from captcha_setting import IMAGE_HEIGHT, IMAGE_WIDTH
 
 
 class ConditionalGAN(tf.keras.Model):
@@ -14,8 +22,8 @@ class ConditionalGAN(tf.keras.Model):
     def metrics(self):
         return [self.generator.gen_loss_tracker, self.discriminator.disc_loss_tracker]
 
-    def compile(self):
-        super(ConditionalGAN, self).compile()
+    def compile(self, loss_fn=None):
+        super(ConditionalGAN, self).compile(loss=loss_fn)
 
     def train_step(self, data):
         # Unpack the data.
@@ -41,6 +49,8 @@ class ConditionalGAN(tf.keras.Model):
 
         # Decode the noise (guided by labels) to fake images.
         generated_images = self.generator.generate(random_vector_labels)
+        # ex = np.reshape(generated_images.eval(session=tf.compat.v1.Session()), [IMAGE_HEIGHT, IMAGE_WIDTH, 1])
+        # save_img(os.getcwd() + "ex.png", ex)
 
         # Combine them with real images. Note that we are concatenating the labels
         # with these images here.
@@ -82,3 +92,42 @@ class ConditionalGAN(tf.keras.Model):
             "g_loss": self.generator.get_loss_track(),
             "d_loss": self.discriminator.get_loss_track(),
         }
+
+    def save_weights(self, path, name):
+        if not os.path.isdir(os.path.join(os.getcwd(), path)):
+            os.makedirs(os.path.join(os.getcwd(), path))
+        if not os.path.isdir(os.path.join(os.getcwd(), path, name)):
+            os.makedirs(os.path.join(os.getcwd(), path, name))
+        os.makedirs(os.path.join(os.getcwd(), path, name, 'Generator'), exist_ok=True)
+        os.makedirs(os.path.join(os.getcwd(), path, name, 'Discriminator'), exist_ok=True)
+
+        self.generator.model.save_weights(os.path.join(os.getcwd(), path, name, 'Generator', 'weights.h5'))
+        symbolic_weights = getattr(self.generator.g_optimizer, 'weights')
+        weight_values = K.batch_get_value(symbolic_weights)
+        with open(os.path.join(os.getcwd(), path, name, 'Generator', 'optimizer.pkl'), 'wb') as f:
+            pickle.dump(weight_values, f)
+
+        self.discriminator.model.save_weights(os.path.join(os.getcwd(), path, name, 'Discriminator', 'weights.h5'))
+        symbolic_weights = getattr(self.discriminator.d_optimizer, 'weights')
+        weight_values = K.batch_get_value(symbolic_weights)
+        with open(os.path.join(os.getcwd(), path, name, 'Discriminator', 'optimizer.pkl'), 'wb') as f:
+            pickle.dump(weight_values, f)
+
+    def load_weights(self, path):
+        self.generator.model.load_weights(os.path.join(os.getcwd(), path, 'Generator', 'weights.h5'))
+        # self.generator.model.make_train_function()
+        with open(os.path.join(os.getcwd(), path, 'Generator', 'optimizer.pkl'), 'rb') as f:
+            weight_values = pickle.load(f)
+
+        zero_grads = [tf.zeros_like(w) for w in self.generator.model.trainable_weights]
+        self.generator.g_optimizer.apply_gradients(zip(zero_grads, self.generator.model.trainable_weights))
+        self.generator.g_optimizer.set_weights(weight_values)
+
+        self.discriminator.model.load_weights(os.path.join(os.getcwd(), path, 'Discriminator', 'weights.h5'))
+        # self.generator.model.make_train_function()
+        with open(os.path.join(os.getcwd(), path, 'Discriminator', 'optimizer.pkl'), 'rb') as f:
+            weight_values = pickle.load(f)
+
+        zero_grads = [tf.zeros_like(w) for w in self.discriminator.model.trainable_weights]
+        self.discriminator.d_optimizer.apply_gradients(zip(zero_grads, self.discriminator.model.trainable_weights))
+        self.discriminator.d_optimizer.set_weights(weight_values)

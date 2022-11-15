@@ -8,41 +8,51 @@ Description: Training a GAN conditioned on class labels to generate captchas.
 # <----------> #
 # ImportBlock  #
 # <----------> #
-
+import numpy as np
 import tensorflow as tf
-from tensorflow import keras
+from keras.datasets import mnist
+from keras.utils import to_categorical
 
 from GAN.models.CGAN import ConditionalGAN
 from GAN.models.DatasetHelper import DatasetHelper
 from GAN.models.Discriminator import Discriminator
 from GAN.models.Generator import Generator
-from GAN.utils.captcha_setting import NUM_CLASSES, IMAGE_HEIGHT, IMAGE_WIDTH, LATENT_DIM, NUM_CHANNELS, BUFFER_SIZE, \
-    BATCH_SIZE
+from captcha_setting import NUM_CLASSES, IMAGE_HEIGHT, IMAGE_WIDTH, LATENT_DIM, NUM_CHANNELS, BATCH_SIZE
 
 # <----------> #
 # ImportBlock  #
 # <----------> #
 
 """
-## Constants and hyperparameters
-"""
-
-"""
 ## Loading the MNIST dataset and preprocessing it
 """
 
+# MNIST TEST
 # We'll use all the available examples from both the training and test
 # sets.
 # (x_train, y_train), (x_test, y_test) = mnist.load_data()
 # all_digits = np.concatenate([x_train, x_test])
 # all_labels = np.concatenate([y_train, y_test])
+#
+# all_digits = all_digits.astype("float32") / 255.0
+# all_digits = np.reshape(all_digits, (-1, 28, 28, 1))
+# all_labels = to_categorical(all_labels, 10)
+#
+# # Create tf.data.Dataset.
+# dataset = tf.data.Dataset.from_tensor_slices((all_digits, all_labels))
+# dataset = dataset.shuffle(buffer_size=1024).batch(BATCH_SIZE)
 
 # Scale the pixel values to [0, 1] range, add a channel dimension to
 # the images, and one-hot encode the labels.
 
-folder = 'data/clusters/cluster_0'
-datasetInitializer = DatasetHelper(folder, IMAGE_HEIGHT, IMAGE_WIDTH)
-dataset = datasetInitializer.create_dataset(buffer_size=BUFFER_SIZE, batch_size=BATCH_SIZE)
+"""
+## Prepare dataset
+"""
+
+folder = 'data/clusters/cluster_10_letters'
+letters = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+datasetInitializer = DatasetHelper(folder, IMAGE_HEIGHT, IMAGE_WIDTH, letters)
+dataset = datasetInitializer.create_dataset(batch_size=BATCH_SIZE)
 
 print(f"Shape of training images: {datasetInitializer.get_images_shape()}")
 print(f"Shape of training labels: {datasetInitializer.get_labels_shape()}")
@@ -62,19 +72,31 @@ discriminator_in_channels = NUM_CHANNELS + NUM_CLASSES
 print(generator_in_channels, discriminator_in_channels)
 
 """
+## Set training parameters
+"""
+
+d_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+g_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+
+loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+
+model_name = 'mnist_200_model'
+saved_model = None
+EPOCH = 30
+
+"""
 ## Creating the discriminator and generator
 """
 
-d_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0003)
-g_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0003)
-loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-
-generator = Generator(in_channels=generator_in_channels, optimizer=g_optimizer, loss_fn=loss_fn, height=IMAGE_HEIGHT,
+generator = Generator(in_channels=generator_in_channels, optimizer=g_optimizer, loss_fn=loss_fn,
+                      height=IMAGE_HEIGHT,
                       width=IMAGE_WIDTH)
-discriminator = Discriminator(in_channels=discriminator_in_channels, optimizer=d_optimizer, loss_fn=loss_fn)
+discriminator = Discriminator(size=(IMAGE_HEIGHT, IMAGE_WIDTH), in_channels=discriminator_in_channels,
+                              optimizer=d_optimizer, loss_fn=loss_fn)
+
 
 """
-## Creating a `ConditionalGAN` model
+## Creating or loading a `ConditionalGAN` model
 """
 
 cond_gan = ConditionalGAN(image_size=(IMAGE_HEIGHT, IMAGE_WIDTH),
@@ -83,20 +105,38 @@ cond_gan = ConditionalGAN(image_size=(IMAGE_HEIGHT, IMAGE_WIDTH),
                           generator=generator,
                           latent_dim=LATENT_DIM)
 
+if saved_model is not None:
+    cond_gan.load_weights(saved_model)
+
+# Change this to `model_dir` when not using the downloaded weights
+# weights_dir = "./tmp"
+#
+# latest_checkpoint = tf.train.latest_checkpoint(weights_dir)
+# cond_gan.load_weights(latest_checkpoint)
+# checkpoint_dir = '/checkpoints'
+# checkpoint = tf.train.Checkpoint(d_optimizer=d_optimizer,
+#                                  g_optimizer=g_optimizer,
+#                                  generator=cond_gan.generator.model,
+#                                  discriminator=cond_gan.discriminator.model)
+#
+# ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=1)
+
+# model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+#     filepath='./tmp/checkpoint',
+#     save_weights_only=True,
+#     monitor='g_loss',
+#     mode='min',
+#     save_best_only=True)
 
 """
 ## Training the Conditional GAN
 """
 
-cond_gan.compile()
-
-cond_gan.fit(dataset, epochs=100)
+cond_gan.compile(loss_fn=loss_fn)
+cond_gan.fit(dataset, epochs=EPOCH, callbacks=[])
 
 """
-## Interpolating between classes with the trained generator
+## Save trained model
 """
 
-# We first extract the trained generator from our Conditiona GAN.
-trained_gen = cond_gan.generator.model
-
-trained_gen.save('tests/my_model.h5')
+cond_gan.save_weights(path='../SavedModels', name=model_name)

@@ -1,22 +1,20 @@
 # -*- coding: UTF-8 -*-
 import numpy as np
 
-from GAN.utils.captcha_setting import MAX_CAPTCHA, ALL_CHAR_SET_LEN
+from captcha_setting import NUM_CLASSES, ALL_CHAR_SET_LEN
 
 
 def encode(text):
-    vector = np.zeros(MAX_CAPTCHA * ALL_CHAR_SET_LEN, dtype='float32')
+    vector = np.zeros(NUM_CLASSES, dtype='float32')
 
     def char2pos(c):
+        c = c.upper()
         k = ord(c) - 48
         if k > 9:
-            c = c.upper()
             k = ord(c) - 65 + 10
             if k > 35:
-                k = ord(c) - 97 + 26 + 10
-                if k > 61:
-                    raise ValueError('error')
-        return k
+                raise ValueError('error')
+        return k - 1 if k < 24 else k - 2
 
     for i, c in enumerate(text):
         idx = i * ALL_CHAR_SET_LEN + char2pos(c)
@@ -43,5 +41,6 @@ def decode(vec):
 
 
 if __name__ == '__main__':
-    e = encode("BK7H")
-    print(decode(e))
+    e = encode("1")
+    print(e)
+    # print(decode(e))

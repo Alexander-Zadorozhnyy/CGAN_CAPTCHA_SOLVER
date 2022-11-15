@@ -3,7 +3,7 @@ from tensorflow.keras import layers
 
 
 class Generator:
-    def __init__(self, in_channels, optimizer, loss_fn, height, width):
+    def __init__(self, in_channels, optimizer, loss_fn, height, width, saved_model=None):
         self.in_channels = in_channels
         self.height = height
         self.width = width
@@ -13,19 +13,55 @@ class Generator:
         self.g_loss = None
         self.gen_loss_tracker = tf.keras.metrics.Mean(name="generator_loss")
 
-        self.model = tf.keras.Sequential(
+        self.model = None
+
+        if saved_model is not None:
+            self.model = saved_model
+        else:
+            self.model = tf.keras.Sequential(
+                [
+                    layers.InputLayer((self.in_channels,)),
+                    # We want to generate 128 + num_classes coefficients to reshape into a
+                    # 7x7x(128 + num_classes) map.
+                    layers.Dense((self.height // 4) * (self.width // 4) * self.in_channels),
+                    layers.LeakyReLU(alpha=0.2),
+                    layers.Reshape(((self.height // 4), (self.width // 4), self.in_channels)),
+
+                    layers.Conv2DTranspose(128, (4, 4), strides=(2, 2), padding="same"),
+                    layers.BatchNormalization(),
+                    layers.LeakyReLU(alpha=0.2),
+
+                    layers.Conv2DTranspose(128, (4, 4), strides=(2, 2), padding="same"),
+                    layers.BatchNormalization(),
+                    layers.LeakyReLU(alpha=0.2),
+
+                    # layers.Conv2DTranspose(128, (4, 4), strides=(1, 1), padding="same"),
+                    # layers.BatchNormalization(),
+                    # layers.LeakyReLU(alpha=0.2),
+
+                    layers.Conv2D(1, (7, 7), padding="same", activation="sigmoid"),
+                ],
+                name="generator",
+            )
+
+        self.model_ = tf.keras.Sequential(
             [
                 layers.InputLayer((self.in_channels,)),
                 # We want to generate 128 + num_classes coefficients to reshape into a
                 # 7x7x(128 + num_classes) map.
                 layers.Dense((self.height // 4) * (self.width // 4) * self.in_channels),
-                layers.LeakyReLU(alpha=0.2),
+                layers.ReLU(),
                 layers.Reshape(((self.height // 4), (self.width // 4), self.in_channels)),
-                layers.Conv2DTranspose(128, (4, 4), strides=(2, 2), padding="same"),
-                layers.LeakyReLU(alpha=0.2),
-                layers.Conv2DTranspose(128, (4, 4), strides=(2, 2), padding="same"),
-                layers.LeakyReLU(alpha=0.2),
-                layers.Conv2D(1, (7, 7), padding="same", activation="sigmoid"),
+
+                layers.Conv2DTranspose(192, (5, 5), strides=(2, 2), padding="same"),
+                layers.BatchNormalization(),
+                layers.ReLU(),
+
+                layers.Conv2DTranspose(96, (5, 5), strides=(2, 2), padding="same"),
+                layers.BatchNormalization(),
+                layers.ReLU(),
+
+                layers.Conv2DTranspose(1, (5, 5), strides=(1, 1), padding="same", activation='tanh'),
             ],
             name="generator",
         )
@@ -86,5 +122,5 @@ if __name__ == "__main__":
                           optimizer=None,
                           loss_fn=tf.keras.losses.BinaryCrossentropy(),
                           height=40,
-                          width=100)
+                          width=24)
     print(generator.model.summary())
