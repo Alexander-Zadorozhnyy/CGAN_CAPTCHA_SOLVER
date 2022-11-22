@@ -1,11 +1,11 @@
 # -*- coding: UTF-8 -*-
 import numpy as np
 
-from captcha_setting import NUM_CLASSES, ALL_CHAR_SET_LEN
+from captcha_setting import NUM_CLASSES, CNN_CLASSES, ALL_CHAR_SET_LEN, IS_MNIST
 
 
-def encode(text):
-    vector = np.zeros(NUM_CLASSES, dtype='float32')
+def encode(text, is_cnn=False):
+    vector = np.zeros(CNN_CLASSES, dtype='float32') if is_cnn else np.zeros(NUM_CLASSES, dtype='float32')
 
     def char2pos(c):
         c = c.upper()
@@ -14,7 +14,7 @@ def encode(text):
             k = ord(c) - 65 + 10
             if k > 35:
                 raise ValueError('error')
-        return k - 1 if k < 24 else k - 2
+        return (k - 1 if k < 24 else k - 2) if not IS_MNIST else k
 
     for i, c in enumerate(text):
         idx = i * ALL_CHAR_SET_LEN + char2pos(c)
@@ -41,6 +41,5 @@ def decode(vec):
 
 
 if __name__ == '__main__':
-    e = encode("1")
-    print(e)
-    # print(decode(e))
+    e = encode("BK7F")
+    print(decode(e))

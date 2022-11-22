@@ -17,7 +17,7 @@ from GAN.models.CGAN import ConditionalGAN
 from GAN.models.DatasetHelper import DatasetHelper
 from GAN.models.Discriminator import Discriminator
 from GAN.models.Generator import Generator
-from captcha_setting import NUM_CLASSES, IMAGE_HEIGHT, IMAGE_WIDTH, LATENT_DIM, NUM_CHANNELS, BATCH_SIZE
+from captcha_setting import NUM_CLASSES, LETTER_HEIGHT, LETTER_WIDTH, LATENT_DIM, NUM_CHANNELS, BATCH_SIZE
 
 # <----------> #
 # ImportBlock  #
@@ -49,9 +49,9 @@ from captcha_setting import NUM_CLASSES, IMAGE_HEIGHT, IMAGE_WIDTH, LATENT_DIM, 
 ## Prepare dataset
 """
 
-folder = 'data/clusters/cluster_10_letters'
-letters = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
-datasetInitializer = DatasetHelper(folder, IMAGE_HEIGHT, IMAGE_WIDTH, letters)
+folder = 'data/clusters/cluster_19_single_letters'
+letters = None # ['1', '2', '4', '3', '5', '6', '7', '9', 'A', 'B', 'C', 'H', 'I', 'J', 'K', 'L', 'M', 'T']
+datasetInitializer = DatasetHelper(folder, LETTER_HEIGHT, LETTER_WIDTH, letters)
 dataset = datasetInitializer.create_dataset(batch_size=BATCH_SIZE)
 
 print(f"Shape of training images: {datasetInitializer.get_images_shape()}")
@@ -74,24 +74,25 @@ print(generator_in_channels, discriminator_in_channels)
 """
 ## Set training parameters
 """
+lr = 0.0003
+d_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+g_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
-d_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
-g_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True) #
 
-loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+model_name = f'cluster_19_batch_{BATCH_SIZE}_all_{lr}_adv_gen_1000_model'
+saved_model = None # "../SavedModels/cluster_19_batch_64_all_0.0001_default_2000_model" #
 
-model_name = 'mnist_200_model'
-saved_model = None
-EPOCH = 30
-
+# TODO try 3000
+EPOCH = 1000
 """
 ## Creating the discriminator and generator
 """
 
 generator = Generator(in_channels=generator_in_channels, optimizer=g_optimizer, loss_fn=loss_fn,
-                      height=IMAGE_HEIGHT,
-                      width=IMAGE_WIDTH)
-discriminator = Discriminator(size=(IMAGE_HEIGHT, IMAGE_WIDTH), in_channels=discriminator_in_channels,
+                      height=LETTER_HEIGHT,
+                      width=LETTER_WIDTH)
+discriminator = Discriminator(size=(LETTER_HEIGHT, LETTER_WIDTH), in_channels=discriminator_in_channels,
                               optimizer=d_optimizer, loss_fn=loss_fn)
 
 
@@ -99,7 +100,7 @@ discriminator = Discriminator(size=(IMAGE_HEIGHT, IMAGE_WIDTH), in_channels=disc
 ## Creating or loading a `ConditionalGAN` model
 """
 
-cond_gan = ConditionalGAN(image_size=(IMAGE_HEIGHT, IMAGE_WIDTH),
+cond_gan = ConditionalGAN(image_size=(LETTER_HEIGHT, LETTER_WIDTH),
                           num_classes=NUM_CLASSES,
                           discriminator=discriminator,
                           generator=generator,

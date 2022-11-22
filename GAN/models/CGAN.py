@@ -1,12 +1,8 @@
 import os
 import pickle
 
-import numpy as np
 import tensorflow as tf
 import keras.backend as K
-from keras.utils import save_img
-
-from captcha_setting import IMAGE_HEIGHT, IMAGE_WIDTH
 
 
 class ConditionalGAN(tf.keras.Model):
@@ -49,7 +45,7 @@ class ConditionalGAN(tf.keras.Model):
 
         # Decode the noise (guided by labels) to fake images.
         generated_images = self.generator.generate(random_vector_labels)
-        # ex = np.reshape(generated_images.eval(session=tf.compat.v1.Session()), [IMAGE_HEIGHT, IMAGE_WIDTH, 1])
+        # ex = np.reshape(generated_images.eval(session=tf.compat.v1.Session()), [LETTER_HEIGHT, LETTER_WIDTH, 1])
         # save_img(os.getcwd() + "ex.png", ex)
 
         # Combine them with real images. Note that we are concatenating the labels
