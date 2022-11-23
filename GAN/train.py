@@ -8,10 +8,12 @@ Description: Training a GAN conditioned on class labels to generate captchas.
 # <----------> #
 # ImportBlock  #
 # <----------> #
+
 import numpy as np
-import tensorflow as tf
 from keras.datasets import mnist
 from keras.utils import to_categorical
+
+import tensorflow as tf
 
 from GAN.models.CGAN import ConditionalGAN
 from GAN.models.DatasetHelper import DatasetHelper
@@ -50,7 +52,7 @@ from captcha_setting import NUM_CLASSES, LETTER_HEIGHT, LETTER_WIDTH, LATENT_DIM
 """
 
 folder = 'data/clusters/cluster_19_single_letters'
-letters = None # ['1', '2', '4', '3', '5', '6', '7', '9', 'A', 'B', 'C', 'H', 'I', 'J', 'K', 'L', 'M', 'T']
+letters = None
 datasetInitializer = DatasetHelper(folder, LETTER_HEIGHT, LETTER_WIDTH, letters)
 dataset = datasetInitializer.create_dataset(batch_size=BATCH_SIZE)
 
@@ -78,12 +80,11 @@ lr = 0.0003
 d_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 g_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
-loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True) #
+loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)  #
 
-model_name = f'cluster_19_batch_{BATCH_SIZE}_all_{lr}_adv_gen_1000_model'
-saved_model = None # "../SavedModels/cluster_19_batch_64_all_0.0001_default_2000_model" #
+model_name = f'cluster_19_batch_{BATCH_SIZE}_all_{lr}_2500_model'
+saved_model = None  # "../SavedModels/cluster_19_batch_64_all_0.0003_2000_model"
 
-# TODO try 3000
 EPOCH = 1000
 """
 ## Creating the discriminator and generator
@@ -94,7 +95,6 @@ generator = Generator(in_channels=generator_in_channels, optimizer=g_optimizer, 
                       width=LETTER_WIDTH)
 discriminator = Discriminator(size=(LETTER_HEIGHT, LETTER_WIDTH), in_channels=discriminator_in_channels,
                               optimizer=d_optimizer, loss_fn=loss_fn)
-
 
 """
 ## Creating or loading a `ConditionalGAN` model
@@ -109,25 +109,6 @@ cond_gan = ConditionalGAN(image_size=(LETTER_HEIGHT, LETTER_WIDTH),
 if saved_model is not None:
     cond_gan.load_weights(saved_model)
 
-# Change this to `model_dir` when not using the downloaded weights
-# weights_dir = "./tmp"
-#
-# latest_checkpoint = tf.train.latest_checkpoint(weights_dir)
-# cond_gan.load_weights(latest_checkpoint)
-# checkpoint_dir = '/checkpoints'
-# checkpoint = tf.train.Checkpoint(d_optimizer=d_optimizer,
-#                                  g_optimizer=g_optimizer,
-#                                  generator=cond_gan.generator.model,
-#                                  discriminator=cond_gan.discriminator.model)
-#
-# ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=1)
-
-# model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-#     filepath='./tmp/checkpoint',
-#     save_weights_only=True,
-#     monitor='g_loss',
-#     mode='min',
-#     save_best_only=True)
 
 """
 ## Training the Conditional GAN
