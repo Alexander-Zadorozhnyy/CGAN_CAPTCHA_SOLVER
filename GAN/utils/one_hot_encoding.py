@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 import numpy as np
 
+import captcha_setting
 from captcha_setting import NUM_CLASSES, CNN_CLASSES, ALL_CHAR_SET_LEN, IS_MNIST
 
 
@@ -23,23 +24,14 @@ def encode(text, is_cnn=False):
 
 
 def decode(vec):
-    char_pos = vec.nonzero()[0]
-    text = []
-    for i, c in enumerate(char_pos):
-        char_at_pos = i  # c/63
-        char_idx = c % 36
-        if char_idx < 10:
-            char_code = char_idx + ord('0')
-        elif char_idx < 36:
-            char_code = char_idx - 10 + ord('A')
-        elif char_idx < 62:
-            char_code = char_idx - 36 + ord('a')
-        else:
-            raise ValueError('error')
-        text.append(chr(char_code))
-    return "".join(text)
+    label = ''
+    for i in range(vec.shape[1] // captcha_setting.ALL_CHAR_SET_LEN):
+        label += captcha_setting.ALL_CHAR_SET[
+            np.argmax(vec[0, captcha_setting.ALL_CHAR_SET_LEN * i:captcha_setting.ALL_CHAR_SET_LEN * (i + 1)])]
+
+    return label
 
 
 if __name__ == '__main__':
-    e = encode("BK7F")
-    print(decode(e))
+    e = encode("BK7F", is_cnn=True)
+    print(e)

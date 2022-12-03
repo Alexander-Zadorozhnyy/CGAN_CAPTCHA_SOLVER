@@ -29,19 +29,32 @@ def load_model(path):
     return generator
 
 
-def customize_image(img, brightness_factor):
+def evaluate_sizes(sum, count: int):
+    from numpy.random import multinomial
+    return multinomial(sum, [1 / np.float32(count)] * count)
+
+
+def customize_image(img, brightness_factor, to_rgb=False, size: tuple = None):
     img = np.reshape(img, [LETTER_HEIGHT, LETTER_WIDTH])
     img = (img * 255 / np.max(img)).astype('uint8')
     img = Image.fromarray(img, mode='L')
 
+    if size is not None:
+        img = img.resize(size)
+
     enhancer = ImageEnhance.Brightness(img)
     img = enhancer.enhance(brightness_factor)
 
-    img = np.asarray(img).astype('float32')
+    if to_rgb:
+        img = img.convert("RGB")
+
+    # img.save('letter.png')
+    # img = np.asarray(img).astype('float32') / 255
     return img
 
 
-def gen_img(name, generator, brightness_factor=1.0):
+def gen_img(name, generator, brightness_factor=1.0, to_rgb=False, size=None):
+    fake = None
     # Sample noise for testing.
     noise = tf.random.normal(shape=(1, LATENT_DIM))
     # label = encode("H")
@@ -52,31 +65,48 @@ def gen_img(name, generator, brightness_factor=1.0):
 
     # Combine the noise and the labels and run inference with the generator.
     noise_and_labels = tf.concat([noise, label], 1)
+
     fake = generator.generate(noise_and_labels)
 
-    if brightness_factor != 1:
-        fake = customize_image(fake, brightness_factor=brightness_factor)
+    if brightness_factor != 1 or to_rgb or size is not None:
+        fake = customize_image(fake, brightness_factor=brightness_factor, to_rgb=to_rgb, size=size)
 
-    fake = np.reshape(fake, [LETTER_HEIGHT, LETTER_WIDTH, 1])
     return fake
+    # if to_rgb:
+    #     return np.reshape(fake, [LETTER_HEIGHT, LETTER_WIDTH, 3])
+    # return np.reshape(fake, [LETTER_HEIGHT, LETTER_WIDTH, 1])
 
 
-def create_sample(generator, label=None, brightness_factor=1.0, is_resized=False):
-
+def create_sample(generator, label=None, brightness_factor=1.0, to_rgb=False, is_res=False):
+    images = None
     if label is None:
         label = [ALL_CHAR_SET[random.randint(0, NUM_CLASSES - 1)] for _ in range(MAX_CAPTCHA)]
 
-    images = [gen_img(x, generator, brightness_factor) for x in label]
+    if is_res:
+        sizes = evaluate_sizes(IMAGE_WIDTH, MAX_CAPTCHA)
+        images = [gen_img(label[x], generator, brightness_factor, to_rgb, (sizes[x], IMAGE_HEIGHT)) for x in range(len(label))]
+    else:
+        images = [gen_img(x, generator, brightness_factor, to_rgb) for x in label]
 
-    image = np.concatenate(images, axis=1)
+    seq = Image.new('RGB' if to_rgb else 'L', (IMAGE_WIDTH, IMAGE_HEIGHT))
 
-    return image, label
+    x_offset = 0
+    for im in images:
+        seq.paste(im, (x_offset, 0))
+        x_offset += im.size[0]
+
+    seq = np.asarray(seq).astype('float32') / 255
+    if to_rgb:
+        return np.reshape(seq, [IMAGE_HEIGHT, IMAGE_WIDTH, 3])
+    return np.reshape(seq, [IMAGE_HEIGHT, IMAGE_WIDTH, 1]), label
+    # return np.concatenate(images, axis=1), label
 
 
 if __name__ == '__main__':
+    # print(evaluate_sizes(96, 4))
     path = os.path.join(os.getcwd(), f"../../SavedModels/{CGAN_MODEL}/Generator/weights.h5")
     generator = load_model(path)
-    img, label = create_sample(generator, brightness_factor=1.25)
+    img, label = create_sample(generator, label='2LUG', brightness_factor=1.25, is_res=True)
     img = np.reshape(img, [IMAGE_HEIGHT, IMAGE_WIDTH])
     img = (img * 255 / np.max(img)).astype('uint8')
     img = Image.fromarray(img, mode='L').resize((100, 40))
