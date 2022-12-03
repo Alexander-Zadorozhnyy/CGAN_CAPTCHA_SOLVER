@@ -1,137 +1,157 @@
 import os
-from itertools import product
-from math import ceil
-from random import shuffle
+import pickle
 
-import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+
 import tensorflow as tf
-from keras_preprocessing.image import save_img
-from tensorflow.keras import layers
+from tensorflow.keras import Model, layers
 
-from GAN.utils.one_hot_encoding import encode
+from captcha_setting import IMAGE_HEIGHT, IMAGE_WIDTH, CNN_CLASSES, LATENT_DIM, ALL_CHAR_SET, MAX_CAPTCHA, NUM_CHANNELS
 
 
 class YMLModel:
-    def __init__(self, height, width, num_classes, latent_dim, char_set, max_captcha):
+    def __init__(self, height, width, num_classes, num_channels):
+        self.model = None
+        self.opt = None
+        self.loss = None
+        self.metrics = None
+
         self.height = height
         self.width = width
+        self.num_channels = num_channels
         self.num_classes = num_classes
-        self.latent_dim = latent_dim
-        self.char_set = char_set
-        self.max_captcha = max_captcha
 
-        # TODO maybe padding != same
-        self.model = tf.keras.Sequential()
+    def set_resnet_model(self):
+        def conv_bn_rl(x, f, k=1, s=1, p='same'):
+            x = layers.Conv2D(f, k, strides=s, padding=p)(x)
+            x = layers.BatchNormalization()(x)
+            x = layers.ReLU()(x)
+            return x
 
-        self.model.add(layers.Input(shape=(self.height, self.width, 1)))
-        self.model.add(layers.Conv2D(32, kernel_size=3, padding='same', name='conv1'))
-        self.model.add(layers.BatchNormalization())
-        self.model.add(layers.Dropout(0.1))  # drop 50% of the neuron
-        self.model.add(layers.ReLU())
-        self.model.add(layers.MaxPool2D(pool_size=(2, 2)))
+        def identity_block(tensor, f):
+            x = conv_bn_rl(tensor, f)
+            x = conv_bn_rl(x, f, 3)
+            x = layers.Conv2D(4 * f, 1)(x)
+            x = layers.BatchNormalization()(x)
 
-        self.model.add(layers.Conv2D(32, kernel_size=3, padding='same', name='conv2'))
-        self.model.add(layers.BatchNormalization())
-        self.model.add(layers.Dropout(0.1))  # drop 50% of the neuron
-        self.model.add(layers.ReLU())
-        self.model.add(layers.MaxPool2D(pool_size=(2, 2)))
+            x = layers.Add()([x, tensor])
+            output = layers.ReLU()(x)
+            return output
 
-        self.model.add(layers.Conv2D(64, kernel_size=3, padding='same', name='conv3'))
-        self.model.add(layers.BatchNormalization())
-        self.model.add(layers.Dropout(0.1))  # drop 50% of the neuron
-        self.model.add(layers.ReLU())
-        self.model.add(layers.MaxPool2D(pool_size=(2, 2)))
+        def conv_block(tensor, f, s):
+            x = conv_bn_rl(tensor, f)
+            x = conv_bn_rl(x, f, 3, s)
+            x = layers.Conv2D(4 * f, 1)(x)
+            x = layers.BatchNormalization()(x)
 
-        self.model.add(layers.Conv2D(64, kernel_size=3, padding='same', name='conv4'))
-        self.model.add(layers.BatchNormalization())
-        self.model.add(layers.Dropout(0.1))  # drop 50% of the neuron
-        self.model.add(layers.ReLU())
-        self.model.add(layers.MaxPool2D(pool_size=(2, 2)))
+            shortcut = layers.Conv2D(4 * f, 1, strides=s)(tensor)
+            shortcut = layers.BatchNormalization()(shortcut)
 
-        self.model.add(layers.Flatten())
+            x = layers.Add()([x, shortcut])
+            output = layers.ReLU()(x)
+            return output
 
-        self.model.add(layers.Dense(1024))
-        self.model.add(layers.Dropout(0.1))  # drop 50% of the neuron
-        self.model.add(layers.ReLU())
+        def resnet_block(x, f, r, s=2):
+            x = conv_block(x, f, s)
+            for _ in range(r - 1):
+                x = identity_block(x, f)
+            return x
 
-        self.model.add(layers.Dense(self.num_classes, activation='sigmoid'))
+        input = layers.Input((self.height, self.width, self.num_channels))
+
+        x = conv_bn_rl(input, 64, 7, 2)
+        x = layers.MaxPool2D(3, strides=2, padding='same')(x)
+
+        x = resnet_block(x, 64, 3, 1)
+        x = resnet_block(x, 128, 4)
+        x = resnet_block(x, 256, 6)
+        x = resnet_block(x, 512, 3)
+
+        x = layers.GlobalAvgPool2D()(x)
+        # x = layers.Dropout(.5)(x)
+        output = layers.Dense(self.num_classes, activation='softmax')(x)
+
+        self.model = Model(input, output)
 
     def summary(self):
-        return self.model.summary()
+        print(self.model.summary())
 
-    def make_samples(self, batch_size=32, val_percent=0.3):
-        samples = [x for x in product(self.char_set, repeat=self.max_captcha)]
-        # samples = [x for x in product(self.char_set[11:15], repeat=self.max_captcha)]
-        num_samples = len(samples) // batch_size * batch_size
-        samples = samples[:num_samples]
-        shuffle(samples)
+    def predict(self, x):
+        return self.model(x)
 
-        train_len = ceil(num_samples*(1 - val_percent))
+    def compile(self, opt, loss, metrics):
+        self.opt = opt
+        self.loss = loss
+        self.metrics = metrics
 
-        train_data = samples[:train_len]
-        val_data = samples[train_len:]
+        self.model.compile(optimizer=self.opt,
+                           loss=self.loss,
+                           metrics=self.metrics)
 
-        return train_data, val_data
+    def fit(self, data, epochs, batch_size=32, val_percent=0.1, callbacks=[]):
+        history = self.model.fit(data[0], data[1],
+                                 batch_size=batch_size,
+                                 epochs=epochs,
+                                 validation_split=val_percent, callbacks=callbacks)
 
-    def create_sample_image(self, model, label):
-        noise = tf.random.normal(shape=(1, self.latent_dim))
+        return history
 
-        label = np.reshape(label, (1, 144))
-        label = tf.convert_to_tensor(label, np.float32)
+    def evaluate(self, data, verbose=0):
+        score = self.model.evaluate(data[0], data[1], verbose=verbose)
+        print("Test loss:", score[0])
+        print("Test accuracy:", score[1])
 
-        # Combine the noise and the labels and run inference with the generator.
-        noise_and_labels = tf.concat([noise, label], 1)
-        fake = model.predict(noise_and_labels)
-        fake = np.reshape(fake, (40, 100, 1))
+    def save(self, path='../CNNModels', name='example.h5'):
+        import keras.backend as K
 
-        # save_img(os.getcwd() + "/some_test.png", fake)
-        return fake
+        if not os.path.isdir(os.path.join(os.getcwd(), path)):
+            os.makedirs(os.path.join(os.getcwd(), path))
+        os.makedirs(os.path.join(os.getcwd(), path, name), exist_ok=True)
 
-    def generator(self, model, samples, batch_size=32):
-        while True:  # Loop forever so the generator never terminates
-            # Get index to start each batch: [0, batch_size, 2*batch_size, ..., max multiple of batch_size <= num_samples]
-            for offset in range(0, len(samples), batch_size):
-                # Get the samples you'll use in this batch
-                batch_samples = samples[offset:offset + batch_size]
+        self.model.save_weights(os.path.join(os.getcwd(), path, name, 'weights.h5'))
+        self.model.save(os.path.join(os.getcwd(), path, name, 'model.h5'))
+        symbolic_weights = getattr(self.model.optimizer, 'weights')
+        weight_values = K.batch_get_value(symbolic_weights)
+        with open(os.path.join(os.getcwd(), path, name, 'optimizer.pkl'), 'wb') as f:
+            pickle.dump(weight_values, f)
 
-                # Initialise X_train and y_train arrays for this batch
-                X_train = []
-                y_train = []
+    def load(self, name, path='../CNNModels'):
+        self.model.load_weights(os.path.join(os.getcwd(), path, name, 'weights.h5'))
+        # self.generator.model.make_train_function()
+        with open(os.path.join(os.getcwd(), path, name, 'optimizer.pkl'), 'rb') as f:
+            weight_values = pickle.load(f)
 
-                # For each example
-                for batch_sample in batch_samples:
-                    # Load image (X) and label (y)
+        zero_grads = [tf.zeros_like(w) for w in self.model.trainable_weights]
+        self.opt.apply_gradients(zip(zero_grads, self.model.trainable_weights))
+        self.opt.set_weights(weight_values)
 
-                    label = encode(batch_sample)
-                    img = self.create_sample_image(model, label)
+    @staticmethod
+    def plot_training(history):
+        acc = history.history['accuracy']
+        val_acc = history.history['val_accuracy']
+        loss = history.history['loss']
+        val_loss = history.history['val_loss']
+        epochs = range(len(acc))
+        print("run to here")
+        print(matplotlib.get_backend())
 
-                    # Add example to arrays
-                    X_train.append(img)
-                    y_train.append(label)
+        plt.plot(epochs, acc, 'r.', label='train_acc')
+        plt.plot(epochs, val_acc, 'b', label='val_acc')
+        plt.title("Training and validation accuracy")
+        plt.legend(loc=0, ncol=2)
+        plt.savefig('./accuracy.png')
 
-                # Make sure they're numpy arrays (as opposed to lists)
-                X_train = np.array(X_train)
-                y_train = np.array(y_train)
+        plt.figure()
+        plt.plot(epochs, loss, 'r.', label='train_loss')
+        plt.plot(epochs, val_loss, 'b-', label='val_loss')
+        plt.title("Training and validation loss")
+        plt.legend(loc=0, ncol=2)
+        plt.savefig('./loss.png')
+        plt.show()
 
-                # The generator-y part: yield the next training batch
-                yield X_train, y_train
 
-    def compile(self, loss, optimizer, metrics):
-        self.model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
-
-    def fit(self, model, batch_size, val_percent, epochs):
-        train, val = self.make_samples(batch_size, val_percent=val_percent)
-
-        train_generator = self.generator(model, train, batch_size=batch_size)
-        val_generator = self.generator(model, val, batch_size=batch_size)
-
-        self.model.fit(
-            train_generator,
-            steps_per_epoch=len(train) // batch_size,
-            epochs=epochs,
-            validation_data=val_generator,
-            validation_steps=len(val) // batch_size,
-        )
-
-    def save(self, path='../CNNModels/example.h5'):
-        self.model.save(path)
+if __name__ == '__main__':
+    solver = YMLModel(IMAGE_HEIGHT, IMAGE_WIDTH, CNN_CLASSES, NUM_CHANNELS)
+    solver.set_resnet_model()
+    solver.summary()

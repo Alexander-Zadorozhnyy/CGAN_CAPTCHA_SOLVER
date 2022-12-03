@@ -1,69 +1,71 @@
-# -*- coding: UTF-8 -*-
+import os
 import random
 
 import numpy as np
-import tensorflow as tf
+from PIL import Image
+from tensorflow.keras.models import load_model as cnn_lm
 
-from tensorflow.keras.models import load_model
+from GAN.utils.one_hot_encoding import decode
+from GAN.utils.utils import load_model as gan_lm, create_sample
+from captcha_setting import ALL_CHAR_SET, CGAN_MODEL
 
-import captcha_setting
-from CNN.model import YMLModel
-from GAN.utils.one_hot_encoding import encode, decode
-from captcha_setting import LATENT_DIM, ALL_CHAR_SET
+
+def predict(cnn, name):
+    image = Image.open(name).resize((96, 40))
+    image = image.convert('L')
+    image = np.asarray(image)
+    image = image.astype("float32") / 255
+    image = image.reshape(1, *image.shape)
+
+    predict_label = cnn(image)
+    return decode(predict_label)
+
+
+def test_gen_cap(gen, cnn):
+    # Test solver on generated CAPTCHA
+    correct = 0
+    total = 0
+    for _ in range(100):
+        label = ''.join(random.sample(ALL_CHAR_SET, 4))
+        image, label = create_sample(generator=gen, label=label, brightness_factor=1.25, is_res=True)
+        image = image.reshape(1, *image.shape)
+        predict_label = cnn(image)
+
+        predict_label = decode(predict_label)
+
+        total += 1
+        if label == predict_label:
+            correct += 1
+        if total % 2000 == 0:
+            print('Test Accuracy of the model on the %d generated test images: %f %%' % (total, 100 * correct / total))
+    print('Test Accuracy of the model on the %d generated test images: %f %%' % (total, 100 * correct / total))
+
+
+def test_not_trained_cap(cnn, path):
+    files = os.listdir(path)
+    files = [x.replace('.png', '') for x in files if '.png' in x]
+
+    total = len(files)
+    correct = 0
+    for x in files:
+        predict_label = predict(cnn=cnn, name=os.path.join(path, x + '.png'))
+        if x == predict_label:
+            correct += 1
+        print(x, predict_label)
+
+    print('Test Accuracy of the model on the %d not trained images: %f %%' % (total, 100 * correct / total))
 
 
 def main():
-    def create_sample_image(label):
-        noise = tf.random.normal(shape=(1, LATENT_DIM))
+    path = "../CNNModels/resnet_44000_000001_30/model.h5"
+    cnn = cnn_lm(path)
 
-        label = np.reshape(label, (1, 144))
-        label = tf.convert_to_tensor(label, np.float32)
-
-        # Combine the noise and the labels and run inference with the generator.
-        noise_and_labels = tf.concat([noise, label], 1)
-        fake = generator.predict(noise_and_labels)
-        fake = np.reshape(fake, (1, 40, 100, 1))
-
-        return fake
-
-    # device = torch.device("cuda")
-    path = "../CNNModels/example.h5"
-    cnn = load_model(path)
-
-    path = "../GeneratorModels/my_model.h5"
-    generator = load_model(path)
+    path = os.path.join(os.getcwd(), f"../SavedModels/{CGAN_MODEL}/Generator/weights.h5")
+    gen = gan_lm(path)
     print("YML Captcha solver net loaded!")
 
-    # test_dataloader = my_dataset.get_test_train_data_loader()
-    correct = 0
-    total = 0
-    for _ in range(1000):
-        label = ''.join(random.sample(ALL_CHAR_SET, 4))
-        label_hot_encoding = encode(label)
-        image = create_sample_image(label_hot_encoding)
-
-        predict_label = cnn.predict(image)
-
-        c0 = captcha_setting.ALL_CHAR_SET[
-            np.argmax(predict_label[0, 0:captcha_setting.ALL_CHAR_SET_LEN])]
-        c1 = captcha_setting.ALL_CHAR_SET[np.argmax(
-            predict_label[0, captcha_setting.ALL_CHAR_SET_LEN:2 * captcha_setting.ALL_CHAR_SET_LEN])]
-        c2 = captcha_setting.ALL_CHAR_SET[np.argmax(predict_label[0,
-                                                    2 * captcha_setting.ALL_CHAR_SET_LEN:3 * captcha_setting.ALL_CHAR_SET_LEN])]
-        c3 = captcha_setting.ALL_CHAR_SET[np.argmax(predict_label[0,
-                                                    3 * captcha_setting.ALL_CHAR_SET_LEN:4 * captcha_setting.ALL_CHAR_SET_LEN])]
-
-        predict_label = '%s%s%s%s' % (c0, c1, c2, c3)
-        print(label, predict_label)
-
-        # save_image(vimage,'temp_result/'+str(i)+'.png')
-        # print(predict_label.upper(),'>>>>>',true_label)
-        total += 1
-        if (label == predict_label):
-            correct += 1
-        if (total % 2000 == 0):
-            print('Test Accuracy of the model on the %d test images: %f %%' % (total, 100 * correct / total))
-    print('Test Accuracy of the model on the %d test images: %f %%' % (total, 100 * correct / total))
+    test_gen_cap(gen, cnn)
+    test_not_trained_cap(cnn, path=os.path.join(os.getcwd(), 'CNN/not_trained'))
 
 
 if __name__ == '__main__':
