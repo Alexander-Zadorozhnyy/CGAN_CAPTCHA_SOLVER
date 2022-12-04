@@ -80,7 +80,7 @@ def main():
     start_time = time.time()
     test_not_trained_cap(cnn, path=os.path.join(os.getcwd(), 'res_data'))
     print(f"--- Generated CAPTCHA only for "
-          f"speed test: {time.time() - start_time} seconds ---"
+          f"speed test: {time.time() - start_time} seconds ---")
 
     start_time = time.time()
     test_not_trained_cap(cnn, path=os.path.join(os.getcwd(), 'not_trained'))
