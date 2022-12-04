@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 import os
 import random
+import time
 
 import numpy as np
 from PIL import Image
@@ -64,7 +65,6 @@ def test_not_trained_cap(cnn, path):
 
 
 def main():
-    import time
     path = f"../CNNModels/{CNN_MODEL}"
     cnn = cnn_lm(path)
 
@@ -79,12 +79,12 @@ def main():
 
     start_time = time.time()
     test_not_trained_cap(cnn, path=os.path.join(os.getcwd(), 'res_data'))
-    print("--- Generated CAPTCHA only for "
-          "speed test: %s seconds ---" % (time.time() - start_time))
+    print(f"--- Generated CAPTCHA only for "
+          f"speed test: {time.time() - start_time} seconds ---"
 
     start_time = time.time()
     test_not_trained_cap(cnn, path=os.path.join(os.getcwd(), 'not_trained'))
-    print("--- Not trained CAPTCHA: %s seconds ---" % (time.time() - start_time))
+    print(f"--- Not trained CAPTCHA: {time.time() - start_time} seconds ---")
 
 
 if __name__ == '__main__':
