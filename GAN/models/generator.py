@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 import tensorflow as tf
 from tensorflow.keras import layers
 
@@ -39,8 +40,8 @@ class Generator:
             name="generator",
         )
 
-    def generate(self, x):
-        return self.model(x)
+    def generate(self, captcha):
+        return self.model(captcha)
 
     def train(self, random_vector, image_hot_labels, misleading_labels, discriminator):
         # Train the generator (note that we should *not* update the weights
@@ -61,9 +62,15 @@ class Generator:
 
 
 if __name__ == "__main__":
-    generator = Generator(in_channels=100,
+    generator = Generator(in_channels=134,
                           optimizer=None,
                           loss_fn=tf.keras.losses.BinaryCrossentropy(),
                           height=40,
                           width=24)
+    model_img_file = 'generator.png'
+    tf.keras.utils.plot_model(generator.model, to_file=model_img_file,
+                              show_shapes=True,
+                              show_layer_activations=True,
+                              show_dtype=True,
+                              show_layer_names=True)
     print(generator.model.summary())

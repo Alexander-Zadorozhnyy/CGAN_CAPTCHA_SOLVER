@@ -1,5 +1,5 @@
+# -*- coding: UTF-8 -*-
 # for loading/processing the images
-# for everything else
 import os
 import pickle
 from shutil import copyfile
@@ -15,15 +15,11 @@ from tensorflow.keras.preprocessing.image import load_img
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
-import cv2
+from captcha_setting import CLUSTER_NUMBER
 
-PATH = r"../GAN/data/captcha_dataset_1"
-#PATH = r"../../GAN_Captcha_Solver/data/captcha_dataset"
+PATH = r"PATH"  # PATH = r"../GAN/data/captcha_dataset_1"
 # change the working directory to the path where the images are located
 os.chdir(PATH)
-
-# image = cv2.imread('yml_00000905052022Y2kNk4Di3e.png', cv2.IMREAD_GRAYSCALE)
-# print(len(image.shape))
 
 # this list holds all the image filename
 captchas = []
@@ -81,18 +77,13 @@ pca.fit(feat)
 x = pca.transform(feat)
 
 # cluster feature vectors
-CLUSTER_NUMBER = 30
 kmeans = KMeans(n_clusters=CLUSTER_NUMBER, random_state=22)
 kmeans.fit(x)
 
 # holds the cluster id and the images { id: [images] }
-groups = {}
+groups = {x: [] for x in kmeans.labels_}
 for file, cluster in zip(filenames, kmeans.labels_):
-    if cluster not in groups.keys():
-        groups[cluster] = []
-        groups[cluster].append(file)
-    else:
-        groups[cluster].append(file)
+    groups[cluster] += [file]
 
 
 # function that lets you view a cluster (based on identifier)
@@ -118,7 +109,7 @@ for k in list_k:
     km.fit(x)
 
     sse.append(km.inertia_)
-# PATH = r"../../GAN_Captcha_Solver/data/captcha_dataset"
+
 # Plot sse against k
 plt.figure(figsize=(6, 6))
 plt.plot(list_k, sse)
@@ -130,5 +121,3 @@ for i in range(0, CLUSTER_NUMBER):
         # view_cluster(i)
         copyfile(image, f"../clusters_/cluster_{i}/{image}")
 plt.show()
-
-

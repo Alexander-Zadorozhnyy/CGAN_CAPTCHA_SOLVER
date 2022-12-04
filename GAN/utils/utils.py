@@ -1,21 +1,22 @@
+# -*- coding: UTF-8 -*-
 import os
 import random
-from math import floor
 
 import numpy as np
+from numpy.random import multinomial
 import tensorflow as tf
 from PIL import Image, ImageEnhance
 
-from GAN.models.Generator import Generator
+from GAN.models.generator import Generator
 from GAN.utils.one_hot_encoding import encode
-from captcha_setting import LATENT_DIM, NUM_CLASSES, LETTER_HEIGHT, LETTER_WIDTH, ALL_CHAR_SET, MAX_CAPTCHA, CGAN_MODEL, \
-    IMAGE_WIDTH, IMAGE_HEIGHT, NUM_CHANNELS
+from captcha_setting import CGAN_LATENT_DIM, NUM_CLASSES, LETTER_HEIGHT, LETTER_WIDTH, \
+    ALL_CHAR_SET, MAX_CAPTCHA, CGAN_MODEL, IMAGE_WIDTH, IMAGE_HEIGHT
 
 
 def load_model(path):
     # Params advertisement
     g_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0003)
-    generator_in_channels = LATENT_DIM + NUM_CLASSES
+    generator_in_channels = CGAN_LATENT_DIM + NUM_CLASSES
     loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
     # Create generator
@@ -29,9 +30,8 @@ def load_model(path):
     return generator
 
 
-def evaluate_sizes(sum, count: int):
-    from numpy.random import multinomial
-    return multinomial(sum, [1 / np.float32(count)] * count)
+def evaluate_sizes(summa, count: int):
+    return multinomial(summa, [1 / np.float32(count)] * count)
 
 
 def customize_image(img, brightness_factor, to_rgb=False, size: tuple = None):
@@ -56,7 +56,7 @@ def customize_image(img, brightness_factor, to_rgb=False, size: tuple = None):
 def gen_img(name, generator, brightness_factor=1.0, to_rgb=False, size=None):
     fake = None
     # Sample noise for testing.
-    noise = tf.random.normal(shape=(1, LATENT_DIM))
+    noise = tf.random.normal(shape=(1, CGAN_LATENT_DIM))
     # label = encode("H")
     label = encode(str(name))
     # Prepare label for generator
@@ -84,16 +84,25 @@ def create_sample(generator, label=None, brightness_factor=1.0, to_rgb=False, is
 
     if is_res:
         sizes = evaluate_sizes(IMAGE_WIDTH, MAX_CAPTCHA)
-        images = [gen_img(label[x], generator, brightness_factor, to_rgb, (sizes[x], IMAGE_HEIGHT)) for x in range(len(label))]
+        images = [gen_img(label[x],
+                          generator,
+                          brightness_factor,
+                          to_rgb,
+                          (sizes[x], IMAGE_HEIGHT)
+                          ) for x in range(len(label))]
     else:
-        images = [gen_img(x, generator, brightness_factor, to_rgb) for x in label]
+        images = [gen_img(x,
+                          generator,
+                          brightness_factor,
+                          to_rgb
+                          ) for x in label]
 
     seq = Image.new('RGB' if to_rgb else 'L', (IMAGE_WIDTH, IMAGE_HEIGHT))
 
     x_offset = 0
-    for im in images:
-        seq.paste(im, (x_offset, 0))
-        x_offset += im.size[0]
+    for img in images:
+        seq.paste(img, (x_offset, 0))
+        x_offset += img.size[0]
 
     seq = np.asarray(seq).astype('float32') / 255
     if to_rgb:

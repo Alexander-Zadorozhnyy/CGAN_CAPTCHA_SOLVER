@@ -1,4 +1,4 @@
-# Create the discriminator.
+# -*- coding: UTF-8 -*-
 import tensorflow as tf
 from tensorflow.keras import layers
 
@@ -28,34 +28,15 @@ class Discriminator:
                 layers.BatchNormalization(momentum=0.1, epsilon=0.8, center=1.0, scale=0.02),
                 layers.LeakyReLU(0.2),
 
-                # layers.Conv2D(64 * 8, (4, 4), strides=(3, 3), padding="same"),
-                # layers.BatchNormalization(momentum=0.1, epsilon=0.8, center=1.0, scale=0.02),
-                # layers.LeakyReLU(0.2),
-
                 layers.Flatten(),
                 layers.Dropout(.4),
-                layers.Dense(1, activation='sigmoid'), #
+                layers.Dense(1, activation='sigmoid'),
             ],
             name="discriminator",
         )
 
-        # self.default = tf.keras.Sequential(
-        #     [
-        #         layers.InputLayer((self.size[0], self.size[1], self.in_channels)),
-        #         layers.Conv2D(64, (3, 3), strides=(2, 2), padding="same"),
-        #         layers.LeakyReLU(alpha=0.2),
-        #         layers.Dropout(.2),
-        #         layers.Conv2D(128, (3, 3), strides=(2, 2), padding="same"),
-        #         layers.LeakyReLU(alpha=0.2),
-        #         layers.Dropout(.2),
-        #         layers.GlobalMaxPooling2D(),
-        #         layers.Dense(1),
-        #     ],
-        #     name="discriminator",
-        # )
-
-    def predict(self, x):
-        return self.model(x)
+    def predict(self, captcha):
+        return self.model(captcha)
 
     def train(self, images, labels):
         # Train the discriminator.
@@ -79,4 +60,10 @@ if __name__ == "__main__":
                                   in_channels=100,
                                   optimizer=None,
                                   loss_fn=tf.keras.losses.BinaryCrossentropy())
+    model_img_file = 'discriminator.png'
+    tf.keras.utils.plot_model(discriminator.model, to_file=model_img_file,
+                              show_shapes=True,
+                              show_layer_activations=True,
+                              show_dtype=True,
+                              show_layer_names=True)
     print(discriminator.model.summary())

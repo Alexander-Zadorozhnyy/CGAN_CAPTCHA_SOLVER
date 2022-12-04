@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 import os
 import random
 
@@ -27,7 +28,10 @@ def test_gen_cap(gen, cnn):
     total = 0
     for _ in range(100):
         label = ''.join(random.sample(ALL_CHAR_SET, 4))
-        image, label = create_sample(generator=gen, label=label, brightness_factor=1.25, is_res=True)
+        image, label = create_sample(generator=gen,
+                                     label=label,
+                                     brightness_factor=1.25,
+                                     is_res=True)
         image = image.reshape(1, *image.shape)
         predict_label = cnn(image)
 
@@ -36,9 +40,11 @@ def test_gen_cap(gen, cnn):
         total += 1
         if label == predict_label:
             correct += 1
-        if total % 2000 == 0:
-            print('Test Accuracy of the model on the %d generated test images: %f %%' % (total, 100 * correct / total))
-    print('Test Accuracy of the model on the %d generated test images: %f %%' % (total, 100 * correct / total))
+        if total % 500 == 0:
+            print(f'Test Accuracy of the model on the {total} '
+                  f'generated test images: {100 * correct / total}')
+    print(f'Test Accuracy of the model on the {total} '
+          f'generated test images: {100 * correct / total}')
 
 
 def test_not_trained_cap(cnn, path):
@@ -47,13 +53,13 @@ def test_not_trained_cap(cnn, path):
 
     total = len(files)
     correct = 0
-    for x in files:
-        predict_label = predict(cnn=cnn, name=os.path.join(path, x + '.png'))
-        if x == predict_label:
+    for label in files:
+        predict_label = predict(cnn=cnn, name=os.path.join(path, label + '.png'))
+        if label == predict_label:
             correct += 1
-        print(x, predict_label)
+        print(label, predict_label)
 
-    print('Test Accuracy of the model on the %d not trained images: %f %%' % (total, 100 * correct / total))
+    print(f'Test Accuracy of the model on the {total} not trained images: {100 * correct / total}')
 
 
 def main():

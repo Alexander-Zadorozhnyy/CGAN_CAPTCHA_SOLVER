@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 # This is a sample Python script.
 
 # Press Shift+F10 to execute it or replace it with your code.
@@ -9,10 +10,11 @@ from PIL import Image
 from tensorflow.keras.models import load_model as cnn_lm
 
 from GAN.utils.one_hot_encoding import decode
+from captcha_setting import CNN_MODEL, IMAGE_WIDTH, IMAGE_HEIGHT
 
 
 def predict(cnn, name):
-    image = Image.open(name).resize((96, 40))
+    image = Image.open(name).resize((IMAGE_WIDTH, IMAGE_HEIGHT))
     image = image.convert('L')
     image = np.asarray(image)
     image = image.astype("float32") / 255
@@ -32,4 +34,4 @@ def main(name):
 
 
 if __name__ == '__main__':
-    main('resnet_44000_000001_30/model.h5')  # resnet_44000_000001_30 -- 65%
+    main(CNN_MODEL)

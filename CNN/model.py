@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 import os
 import pickle
 
@@ -5,80 +6,79 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 import tensorflow as tf
+import keras.backend as K
 from tensorflow.keras import Model, layers
 
-from captcha_setting import IMAGE_HEIGHT, IMAGE_WIDTH, CNN_CLASSES, LATENT_DIM, ALL_CHAR_SET, MAX_CAPTCHA, NUM_CHANNELS
+from captcha_setting import IMAGE_HEIGHT, IMAGE_WIDTH, CNN_CLASSES, NUM_CHANNELS
 
 
 class YMLModel:
-    def __init__(self, height, width, num_classes, num_channels):
+    def __init__(self, shape, num_classes):
         self.model = None
         self.opt = None
         self.loss = None
         self.metrics = None
 
-        self.height = height
-        self.width = width
-        self.num_channels = num_channels
+        self.shape = shape
         self.num_classes = num_classes
 
     def set_resnet_model(self):
-        def conv_bn_rl(x, f, k=1, s=1, p='same'):
-            x = layers.Conv2D(f, k, strides=s, padding=p)(x)
-            x = layers.BatchNormalization()(x)
-            x = layers.ReLU()(x)
-            return x
+        def conv_bn_rl(tensor, filters, kernel=1, strides=1, p='same'):
+            tensor = layers.Conv2D(filters, kernel, strides=strides, padding=p)(tensor)
+            tensor = layers.BatchNormalization()(tensor)
+            tensor = layers.ReLU()(tensor)
+            return tensor
 
-        def identity_block(tensor, f):
-            x = conv_bn_rl(tensor, f)
-            x = conv_bn_rl(x, f, 3)
-            x = layers.Conv2D(4 * f, 1)(x)
-            x = layers.BatchNormalization()(x)
+        def identity_block(input_layer, filters):
+            tensor = conv_bn_rl(input_layer, filters)
+            tensor = conv_bn_rl(tensor, filters, 3)
+            tensor = layers.Conv2D(4 * filters, 1)(tensor)
+            tensor = layers.BatchNormalization()(tensor)
 
-            x = layers.Add()([x, tensor])
-            output = layers.ReLU()(x)
+            tensor = layers.Add()([tensor, input_layer])
+            output = layers.ReLU()(tensor)
             return output
 
-        def conv_block(tensor, f, s):
-            x = conv_bn_rl(tensor, f)
-            x = conv_bn_rl(x, f, 3, s)
-            x = layers.Conv2D(4 * f, 1)(x)
-            x = layers.BatchNormalization()(x)
+        def conv_block(input_layer, filters, strides):
+            tensor = conv_bn_rl(input_layer, filters)
+            tensor = conv_bn_rl(tensor, filters, 3, strides)
+            tensor = layers.Conv2D(4 * filters, 1)(tensor)
+            tensor = layers.BatchNormalization()(tensor)
 
-            shortcut = layers.Conv2D(4 * f, 1, strides=s)(tensor)
+            shortcut = layers.Conv2D(4 * filters, 1, strides=strides)(input_layer)
             shortcut = layers.BatchNormalization()(shortcut)
 
-            x = layers.Add()([x, shortcut])
-            output = layers.ReLU()(x)
+            tensor = layers.Add()([tensor, shortcut])
+            output = layers.ReLU()(tensor)
             return output
 
-        def resnet_block(x, f, r, s=2):
-            x = conv_block(x, f, s)
-            for _ in range(r - 1):
-                x = identity_block(x, f)
-            return x
+        def resnet_block(input_layer, filters, repeat, strides=2):
+            tensor = conv_block(input_layer, filters, strides)
+            for _ in range(repeat - 1):
+                tensor = identity_block(tensor, filters)
+            return tensor
 
-        input = layers.Input((self.height, self.width, self.num_channels))
+        input_layer = layers.Input(self.shape)
 
-        x = conv_bn_rl(input, 64, 7, 2)
-        x = layers.MaxPool2D(3, strides=2, padding='same')(x)
+        output = conv_bn_rl(input_layer, 64, 7, 2)
+        output = layers.MaxPool2D(3, strides=2, padding='same')(output)
 
-        x = resnet_block(x, 64, 3, 1)
-        x = resnet_block(x, 128, 4)
-        x = resnet_block(x, 256, 6)
-        x = resnet_block(x, 512, 3)
+        output = resnet_block(output, 64, 3, 1)
+        output = resnet_block(output, 128, 4)
+        output = resnet_block(output, 256, 6)
+        output = resnet_block(output, 512, 3)
 
-        x = layers.GlobalAvgPool2D()(x)
-        # x = layers.Dropout(.5)(x)
-        output = layers.Dense(self.num_classes, activation='softmax')(x)
+        output = layers.GlobalAvgPool2D()(output)
+        # output = layers.Dropout(.5)(output)
+        output = layers.Dense(self.num_classes, activation='softmax')(output)
 
-        self.model = Model(input, output)
+        self.model = Model(input_layer, output)
 
     def summary(self):
         print(self.model.summary())
 
-    def predict(self, x):
-        return self.model(x)
+    def predict(self, captcha):
+        return self.model(captcha)
 
     def compile(self, opt, loss, metrics):
         self.opt = opt
@@ -89,7 +89,7 @@ class YMLModel:
                            loss=self.loss,
                            metrics=self.metrics)
 
-    def fit(self, data, epochs, batch_size=32, val_percent=0.1, callbacks=[]):
+    def fit(self, data, epochs, batch_size=32, val_percent=0.1, callbacks=None):
         history = self.model.fit(data[0], data[1],
                                  batch_size=batch_size,
                                  epochs=epochs,
@@ -103,8 +103,6 @@ class YMLModel:
         print("Test accuracy:", score[1])
 
     def save(self, path='../CNNModels', name='example.h5'):
-        import keras.backend as K
-
         if not os.path.isdir(os.path.join(os.getcwd(), path)):
             os.makedirs(os.path.join(os.getcwd(), path))
         os.makedirs(os.path.join(os.getcwd(), path, name), exist_ok=True)
@@ -152,6 +150,6 @@ class YMLModel:
 
 
 if __name__ == '__main__':
-    solver = YMLModel(IMAGE_HEIGHT, IMAGE_WIDTH, CNN_CLASSES, NUM_CHANNELS)
+    solver = YMLModel((IMAGE_HEIGHT, IMAGE_WIDTH, NUM_CHANNELS), CNN_CLASSES)
     solver.set_resnet_model()
     solver.summary()

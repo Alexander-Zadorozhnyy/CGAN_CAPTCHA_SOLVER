@@ -1,6 +1,6 @@
 .idea
 __pycache__
-models/__pycache__
+Models/__pycache__
 tests/__pycache
 utils/__pycache__
 DONE
