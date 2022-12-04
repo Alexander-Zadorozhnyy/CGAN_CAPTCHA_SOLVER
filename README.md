@@ -26,6 +26,20 @@ There are CAPTCHA that can be recognized by this solver. You can find some train
 pip install -r requirement.txt
 ```
 
+## Metrics
+
+Synthetic CAPTCHA
+
+    Time: 385 seconds to solve 5000 CAPTCHAs
+
+    Accuracy: ~99%
+
+Real CAPTCHA
+
+    Time: 8 seconds to solve 100 CAPTCHAs
+
+    Accuracy:  ~65%
+
 ## Documentation
 
 > You can check some details about this solver in src/report.pdf or click to the link below.

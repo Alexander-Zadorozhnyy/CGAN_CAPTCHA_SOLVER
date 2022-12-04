@@ -8,7 +8,7 @@ from tensorflow.keras.models import load_model as cnn_lm
 
 from GAN.utils.one_hot_encoding import decode
 from GAN.utils.utils import load_model as gan_lm, create_sample
-from captcha_setting import ALL_CHAR_SET, CGAN_MODEL
+from captcha_setting import ALL_CHAR_SET, CGAN_MODEL, CNN_MODEL
 
 
 def predict(cnn, name):
@@ -22,11 +22,11 @@ def predict(cnn, name):
     return decode(predict_label)
 
 
-def test_gen_cap(gen, cnn):
+def test_gen_cap(gen, cnn, count):
     # Test solver on generated CAPTCHA
     correct = 0
     total = 0
-    for _ in range(100):
+    for _ in range(count):
         label = ''.join(random.sample(ALL_CHAR_SET, 4))
         image, label = create_sample(generator=gen,
                                      label=label,
@@ -42,14 +42,14 @@ def test_gen_cap(gen, cnn):
             correct += 1
         if total % 500 == 0:
             print(f'Test Accuracy of the model on the {total} '
-                  f'generated test images: {100 * correct / total}')
+                  f'generated test images: {100 * correct / total}%')
     print(f'Test Accuracy of the model on the {total} '
-          f'generated test images: {100 * correct / total}')
+          f'generated test images: {100 * correct / total}%')
 
 
 def test_not_trained_cap(cnn, path):
     files = os.listdir(path)
-    files = [x.replace('.png', '') for x in files if '.png' in x]
+    files = [x.replace('.png', '') for x in files if '.png' in x][:5000]
 
     total = len(files)
     correct = 0
@@ -57,21 +57,34 @@ def test_not_trained_cap(cnn, path):
         predict_label = predict(cnn=cnn, name=os.path.join(path, label + '.png'))
         if label == predict_label:
             correct += 1
-        print(label, predict_label)
+        # print(label, predict_label)
 
-    print(f'Test Accuracy of the model on the {total} not trained images: {100 * correct / total}')
+    print(f'Test Accuracy of the model on the {total} not '
+          f'trained images: {100 * correct / total}%')
 
 
 def main():
-    path = "../CNNModels/resnet_44000_000001_30/model.h5"
+    import time
+    path = f"../CNNModels/{CNN_MODEL}"
     cnn = cnn_lm(path)
 
     path = os.path.join(os.getcwd(), f"../SavedModels/{CGAN_MODEL}/Generator/weights.h5")
     gen = gan_lm(path)
     print("YML Captcha solver net loaded!")
 
-    test_gen_cap(gen, cnn)
-    test_not_trained_cap(cnn, path=os.path.join(os.getcwd(), 'CNN/not_trained'))
+    start_time = time.time()
+    test_gen_cap(gen, cnn, 100)
+    print(f"--- Generation + predictions on "
+          f"random CAPTCHA: {time.time() - start_time} seconds ---")
+
+    start_time = time.time()
+    test_not_trained_cap(cnn, path=os.path.join(os.getcwd(), 'res_data'))
+    print("--- Generated CAPTCHA only for "
+          "speed test: %s seconds ---" % (time.time() - start_time))
+
+    start_time = time.time()
+    test_not_trained_cap(cnn, path=os.path.join(os.getcwd(), 'not_trained'))
+    print("--- Not trained CAPTCHA: %s seconds ---" % (time.time() - start_time))
 
 
 if __name__ == '__main__':
