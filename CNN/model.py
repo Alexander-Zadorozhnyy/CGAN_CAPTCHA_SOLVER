@@ -23,8 +23,8 @@ class YMLModel:
         self.num_classes = num_classes
 
     def set_resnet_model(self):
-        def conv_bn_rl(tensor, filters, kernel=1, strides=1, p='same'):
-            tensor = layers.Conv2D(filters, kernel, strides=strides, padding=p)(tensor)
+        def conv_bn_rl(tensor, filters, kernel=1, strides=1, padding='same'):
+            tensor = layers.Conv2D(filters, kernel, strides=strides, padding=padding)(tensor)
             tensor = layers.BatchNormalization()(tensor)
             tensor = layers.ReLU()(tensor)
             return tensor
@@ -111,14 +111,14 @@ class YMLModel:
         self.model.save(os.path.join(os.getcwd(), path, name, 'model.h5'))
         symbolic_weights = getattr(self.model.optimizer, 'weights')
         weight_values = K.batch_get_value(symbolic_weights)
-        with open(os.path.join(os.getcwd(), path, name, 'optimizer.pkl'), 'wb') as f:
-            pickle.dump(weight_values, f)
+        with open(os.path.join(os.getcwd(), path, name, 'optimizer.pkl'), 'wb') as file:
+            pickle.dump(weight_values, file)
 
     def load(self, name, path='../CNNModels'):
         self.model.load_weights(os.path.join(os.getcwd(), path, name, 'weights.h5'))
         # self.generator.model.make_train_function()
-        with open(os.path.join(os.getcwd(), path, name, 'optimizer.pkl'), 'rb') as f:
-            weight_values = pickle.load(f)
+        with open(os.path.join(os.getcwd(), path, name, 'optimizer.pkl'), 'rb') as file:
+            weight_values = pickle.load(file)
 
         zero_grads = [tf.zeros_like(w) for w in self.model.trainable_weights]
         self.opt.apply_gradients(zip(zero_grads, self.model.trainable_weights))

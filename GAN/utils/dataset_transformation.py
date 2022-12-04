@@ -64,8 +64,8 @@ def make_number():
 
 def make_one_txt():
     res = []
-    dir = os.listdir(os.getcwd())
-    for i in range(len(dir) // 2):
+    directory = os.listdir(os.getcwd())
+    for i in range(len(directory) // 2):
         text_file = open(f'{i}.txt', "r")
         res += [text_file.read().upper()]
 
@@ -79,7 +79,7 @@ directory = os.listdir(os.getcwd())
 def analyse_dataset(mode='check'):
     count = 0
     # print(dir)
-    for i, j in enumerate(directory):
+    for _, j in enumerate(directory):
         k = ""
         if '.txt' in j:
             k = j.replace('_request_', '_', 1).replace('.txt', '.png', 1)

@@ -32,8 +32,8 @@ class DatasetHelper:
                     for file in files:
                         self.image_paths += [os.path.join(folder, directory, file)]
                         self.label_paths += [directory]
-
-        self.image_paths = self.image_paths[:(len(self.image_paths) // CGAN_BATCH_SIZE) * CGAN_BATCH_SIZE]
+        count = (len(self.image_paths) // CGAN_BATCH_SIZE) * CGAN_BATCH_SIZE
+        self.image_paths = self.image_paths[:count]
         self.label_paths = self.label_paths[:len(self.image_paths)]
         self.images_shape = None
         self.labels_shape = None
@@ -53,8 +53,8 @@ class DatasetHelper:
 
     def get_labels(self):
         labels = []
-        for x in self.label_paths:
-            labels += [encode(x)]
+        for label in self.label_paths:
+            labels += [encode(label)]
         labels = np.array(labels)
         self.labels_shape = labels.shape
         return labels

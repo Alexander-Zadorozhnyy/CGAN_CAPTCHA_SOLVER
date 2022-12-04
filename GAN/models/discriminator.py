@@ -60,8 +60,8 @@ if __name__ == "__main__":
                                   in_channels=100,
                                   optimizer=None,
                                   loss_fn=tf.keras.losses.BinaryCrossentropy())
-    model_img_file = 'discriminator.png'
-    tf.keras.utils.plot_model(discriminator.model, to_file=model_img_file,
+    MODEL_IMG = 'discriminator.png'
+    tf.keras.utils.plot_model(discriminator.model, to_file=MODEL_IMG,
                               show_shapes=True,
                               show_layer_activations=True,
                               show_dtype=True,

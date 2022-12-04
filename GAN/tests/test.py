@@ -34,7 +34,10 @@ def create_seq(label=None, brightness_factor=1.0):
 
 
 def create_all_seq(path, label, brightness_factor=1.0):
-    img, label = create_sample(generator, label, brightness_factor=brightness_factor, is_res=True)
+    img, label = create_sample(generator,
+                               label,
+                               brightness_factor=brightness_factor,
+                               is_res=True)
     img = np.reshape(img, [LETTER_HEIGHT, LETTER_WIDTH * 4])
     img = (img * 255 / np.max(img)).astype('uint8')
     img = Image.fromarray(img, mode='L')  # .resize((100, 40))
@@ -42,7 +45,10 @@ def create_all_seq(path, label, brightness_factor=1.0):
 
 
 def create_all_rgb_seq(label=None, brightness_factor=1.0):
-    img, label = create_sample(generator, label=label, brightness_factor=brightness_factor, to_rgb=True)
+    img, label = create_sample(generator,
+                               label=label,
+                               brightness_factor=brightness_factor,
+                               to_rgb=True)
     img = np.reshape(img, [LETTER_HEIGHT, LETTER_WIDTH * 4, 3])
     img = (img * 255 / np.max(img)).astype('uint8')
     img = Image.fromarray(img, mode='RGB')  # .resize((100, 40))

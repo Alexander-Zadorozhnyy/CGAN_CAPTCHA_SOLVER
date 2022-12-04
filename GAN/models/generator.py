@@ -67,8 +67,8 @@ if __name__ == "__main__":
                           loss_fn=tf.keras.losses.BinaryCrossentropy(),
                           height=40,
                           width=24)
-    model_img_file = 'generator.png'
-    tf.keras.utils.plot_model(generator.model, to_file=model_img_file,
+    MODEL_IMG = 'generator.png'
+    tf.keras.utils.plot_model(generator.model, to_file=MODEL_IMG,
                               show_shapes=True,
                               show_layer_activations=True,
                               show_dtype=True,
