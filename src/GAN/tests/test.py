@@ -1,15 +1,14 @@
 # -*- coding: UTF-8 -*-
 import os
-import random
 
 import numpy as np
 from PIL import Image
 from tensorflow.keras.models import load_model
 from keras_preprocessing.image import save_img
 
-from captcha_setting import NUM_CLASSES, LETTER_HEIGHT, LETTER_WIDTH, \
-    ALL_CHAR_SET, CGAN_MODEL, MAX_CAPTCHA
 from src.GAN.utils.utils import gen_img, create_sample
+from captcha_setting import LETTER_HEIGHT, LETTER_WIDTH, ALL_CHAR_SET, CGAN_MODEL
+
 
 path = os.path.join(os.getcwd(), f"trained_models/{CGAN_MODEL}/Generator/generator.h5")
 generator = load_model(path)

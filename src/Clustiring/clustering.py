@@ -26,6 +26,34 @@ def get_parser_args():
     return vars(parser.parse_args())
 
 
+# function that lets you view a cluster (based on identifier)
+def view_cluster(cluster, groups):
+    plt.figure(figsize=(25, 25))
+    # gets the list of filenames for a cluster
+    files = groups[cluster]
+    # plot each image in the cluster
+    for index, file in enumerate(files):
+        plt.subplot(10, 10, index + 1)
+        img = load_img(file)
+        img = np.array(img)
+        plt.imshow(img)
+        plt.axis('off')
+
+
+def extract_features(file, model):
+    # load the image as a 224x224 array
+    img = load_img(file, target_size=(224, 224))
+    # convert from 'PIL.Image.Image' to numpy array
+    img = np.array(img)
+    # reshape the data for the model reshape(num_of_samples, dim 1, dim 2, channels)
+    reshaped_img = img.reshape(1, 224, 224, 3)
+    # prepare image for model
+    imgx = preprocess_input(reshaped_img)
+    # get the feature vector
+    features = model.predict(imgx, use_multiprocessing=True)
+    return features
+
+
 def main(path):
     # change the working directory to the path where the images are located
     os.chdir(path)
@@ -44,21 +72,8 @@ def main(path):
     model = VGG16()
     model = Model(inputs=model.inputs, outputs=model.layers[-2].output)
 
-    def extract_features(file, model):
-        # load the image as a 224x224 array
-        img = load_img(file, target_size=(224, 224))
-        # convert from 'PIL.Image.Image' to numpy array
-        img = np.array(img)
-        # reshape the data for the model reshape(num_of_samples, dim 1, dim 2, channels)
-        reshaped_img = img.reshape(1, 224, 224, 3)
-        # prepare image for model
-        imgx = preprocess_input(reshaped_img)
-        # get the feature vector
-        features = model.predict(imgx, use_multiprocessing=True)
-        return features
-
     data = {}
-    P = r"vectors.pkl"
+    vector = r"vectors.pkl"
 
     # lop through each image in the dataset
     for captcha in captchas:
@@ -68,7 +83,7 @@ def main(path):
             data[captcha] = feat
         # if something fails, save the extracted features as a pickle file (optional)
         except FileNotFoundError:
-            with open(P, 'wb') as file:
+            with open(vector, 'wb') as file:
                 pickle.dump(data, file)
 
     # get a list of the filenames
@@ -81,39 +96,26 @@ def main(path):
     # reduce the amount of dimensions in the feature vector
     pca = PCA(n_components=100, random_state=22)
     pca.fit(feat)
-    x = pca.transform(feat)
+    transformed = pca.transform(feat)
 
     # cluster feature vectors
     kmeans = KMeans(n_clusters=CLUSTER_NUMBER, random_state=22)
-    kmeans.fit(x)
+    kmeans.fit(transformed)
 
     # holds the cluster id and the images { id: [images] }
     groups = {x: [] for x in kmeans.labels_}
     for file, cluster in zip(filenames, kmeans.labels_):
         groups[cluster] += [file]
 
-    # function that lets you view a cluster (based on identifier)
-    def view_cluster(cluster):
-        plt.figure(figsize=(25, 25))
-        # gets the list of filenames for a cluster
-        files = groups[cluster]
-        # plot each image in the cluster
-        for index, file in enumerate(files):
-            plt.subplot(10, 10, index + 1)
-            img = load_img(file)
-            img = np.array(img)
-            plt.imshow(img)
-            plt.axis('off')
-
     # this is just incase you want to see which value for k might be the best
     sse = []
     list_k = list(range(3, 50))
 
     for k in list_k:
-        km = KMeans(n_clusters=k, random_state=22)
-        km.fit(x)
+        k_means = KMeans(n_clusters=k, random_state=22)
+        k_means.fit(transformed)
 
-        sse.append(km.inertia_)
+        sse.append(k_means.inertia_)
 
     # Plot sse against k
     plt.figure(figsize=(6, 6))
@@ -123,7 +125,7 @@ def main(path):
     for i in range(0, CLUSTER_NUMBER):
         os.makedirs(f"../clusters/cluster_{i}", exist_ok=True)
         for image in groups[i]:
-            # view_cluster(i)
+            # view_cluster(i, groups)
             copyfile(image, f"../clusters/cluster_{i}/{image}")
     plt.show()
 

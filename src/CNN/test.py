@@ -8,8 +8,8 @@ from PIL import Image
 from tensorflow.keras.models import load_model
 
 from src.GAN.utils.one_hot_encoding import decode
-from captcha_setting import ALL_CHAR_SET, CGAN_MODEL, CNN_MODEL
 from src.GAN.utils.utils import create_sample
+from captcha_setting import ALL_CHAR_SET, CGAN_MODEL, CNN_MODEL
 
 
 def predict(cnn, name):

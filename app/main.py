@@ -4,13 +4,11 @@
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import os
-
-import numpy as np
 import argparse
 
+import numpy as np
 from PIL import Image
 from tensorflow.keras.models import load_model as cnn_lm
-
 
 from captcha_setting import IMAGE_WIDTH, IMAGE_HEIGHT
 from src.GAN.utils.one_hot_encoding import decode

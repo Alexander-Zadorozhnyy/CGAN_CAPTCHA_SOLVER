@@ -17,7 +17,7 @@ from src.GAN.models.dataset_helper import DatasetHelper
 from src.GAN.models.discriminator import Discriminator
 from src.GAN.models.generator import Generator
 from captcha_setting import LETTER_HEIGHT, LETTER_WIDTH, CGAN_LATENT_DIM, \
-    NUM_CLASSES, NUM_CHANNELS, CGAN_BATCH_SIZE, CLUSTER, CGAN_LR_D, CGAN_LR_G, CGAN_EPOCH
+    NUM_CLASSES, NUM_CHANNELS, CGAN_BATCH_SIZE, CGAN_LR_D, CGAN_LR_G, CGAN_EPOCH
 
 
 def get_parser_args():
@@ -68,9 +68,9 @@ def main(dataset_folder, symbols, model_name, saved_model_name):
     # Calculating the number of input channel for the generator and discriminator #
     # <-------------------------------------------------------------------------> #
 
-    GENERATOR_INPUT_CHANNELS = CGAN_LATENT_DIM + NUM_CLASSES
-    DISCRIMINATOR_INPUT_CHANNELS = NUM_CHANNELS + NUM_CLASSES
-    print(GENERATOR_INPUT_CHANNELS, DISCRIMINATOR_INPUT_CHANNELS)
+    generator_input_channels = CGAN_LATENT_DIM + NUM_CLASSES
+    discriminator_input_channels = NUM_CHANNELS + NUM_CLASSES
+    print(generator_input_channels, discriminator_input_channels)
 
     # <-------------------------------------------------------------------------> #
     # Calculating the number of input channel for the generator and discriminator #
@@ -93,13 +93,13 @@ def main(dataset_folder, symbols, model_name, saved_model_name):
     # Creating the discriminator and generator #
     # <--------------------------------------> #
 
-    generator = Generator(in_channels=GENERATOR_INPUT_CHANNELS,
+    generator = Generator(in_channels=generator_input_channels,
                           optimizer=g_optimizer,
                           loss_fn=loss_fn,
                           height=LETTER_HEIGHT,
                           width=LETTER_WIDTH)
     discriminator = Discriminator(size=(LETTER_HEIGHT, LETTER_WIDTH),
-                                  in_channels=DISCRIMINATOR_INPUT_CHANNELS,
+                                  in_channels=discriminator_input_channels,
                                   optimizer=d_optimizer,
                                   loss_fn=loss_fn)
 

@@ -82,9 +82,9 @@ class YMLModel:
         for layer in base_model.layers:
             layer.trainable = False
 
-        x = layers.Flatten()(base_model.output)
-        x = layers.Dense(1000, activation='relu')(x)
-        predictions = layers.Dense(self.num_classes, activation='softmax')(x)
+        tensor = layers.Flatten()(base_model.output)
+        tensor = layers.Dense(1000, activation='relu')(tensor)
+        predictions = layers.Dense(self.num_classes, activation='softmax')(tensor)
         self.model = Model(inputs=base_model.input, outputs=predictions)
 
     def summary(self):
