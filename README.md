@@ -35,7 +35,7 @@ cd CGAN_CAPTCHA_SOLVER
 ### Step1: Create & Activate Conda Env
 ```shell
 conda create -n "CGAN_CAPTCHA_SOLVER" python=3.9.12
-conda activate PyCaptcha
+conda activate CGAN_CAPTCHA_SOLVER
 ```
 ### Step2: Install PIP Requirements 
 ```shell
