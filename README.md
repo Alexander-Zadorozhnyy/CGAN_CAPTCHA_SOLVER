@@ -27,36 +27,36 @@ pip install -r requirement.txt
 ```
 
 ## Usage guide⚙️
-### Step0: Clone the Project
+##### Step0: Clone the Project
 ```shell
 git clone https://github.com/Alexander-Zadorozhnyy/CGAN_CAPTCHA_SOLVER.git
 cd CGAN_CAPTCHA_SOLVER
 ```
-### Step1: Create & Activate Conda Env
+##### Step1: Create & Activate Conda Env
 ```shell
 conda create -n "CGAN_CAPTCHA_SOLVER" python=3.9.12
 conda activate CGAN_CAPTCHA_SOLVER
 ```
-### Step2: Install PIP Requirements 
+##### Step2: Install PIP Requirements 
 ```shell
 pip install -r requirement.txt
 ```
-### Step3: Configure captcha_setting.py
-### Step4: Prepare dataset
+##### Step3: Configure captcha_setting.py
+##### Step4: Prepare dataset
 If you have a lot of different styles in your CAPTCHA dataset, you can use the clustering algorithm:
 ```shell
 python -m src.Clustering.clustering --dataset path_to_dataset
 ```
-### Step5: Train CAPTCHA generator
+##### Step5: Train CAPTCHA generator
 if you have quite a few original data, you can generate synthetic CAPTCHA:
 ```shell
 python -m src.GAN.train --dataset_folder --symbols --model_name --saved_model_name
 ```
-### Step6: Generate as much CAPTCHA as you need for training solver
+##### Step6: Generate as much CAPTCHA as you need for training solver
 ```shell
 python -m src.GAN.create_dataset --dataset_folder --count
 ```
-### Step7: Train CAPTCHA solver
+##### Step7: Train CAPTCHA solver
 if you have quite a few original data, you can generate synthetic CAPTCHA:
 ```shell
 python -m src.CNN.train --gen_data --num_gen_train --num_gen_test --saved_model_name --orig_data --num_orig_train --num_orig_test --model_name --saved_model_name'
