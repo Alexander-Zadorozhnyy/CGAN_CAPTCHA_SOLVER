@@ -13,6 +13,8 @@ achieve a higher success rate than others whilst it requires significantly fewer
 generator. Here we exposed only code without dataset that can run independently on your data for security reasons. Note
 that it is not production ready. If you encounter any problems, please file an issue on GitHub.
 
+The work was carried out with the support and on the basis of the laboratory of theoretical and interdisciplinary problems of Informatics of the Federal State Budgetary Institution of Science "St. Petersburg Federal Research Center of the Russian Academy of Sciences" (St. Petersburg FRC RAS). Official website: https://dscs.pro/
+
 ## CAPTCHA image recognition
 
 There are CAPTCHA that can be recognized by this solver. You can find some trained models in app/models.
